@@ -1,13 +1,18 @@
 ﻿using ParallelProject.Main;
 using System.Diagnostics;
-using System.IO;
 
 public class Program {
+
     /*-----------------------------------------------------------------------------------------------*/
-    /*          Guillermo Adrián Alonso Arámbula Matrícula: 1812367 Carrera: ITS                     */
+    /*          Guillermo Adrián Alonso Arámbula - Matrícula: 1812367 - Carrera: ITS                 */
     /*-----------------------------------------------------------------------------------------------*/
-    /*Sistemas Distribuidos y Paralelos Sabatino (N4) M.I.I Carlos Adrián Pérez Cortez               */
+    /* Sistemas Distribuidos y Paralelos Sabatino (N4) -  M.I.I Carlos Adrián Pérez Cortez - EJ2022  */
     /*-----------------------------------------------------------------------------------------------*/
+    /* Programa que realiza la generación de enteros que son almacenados en un archivo de texto, así */
+    /* mismo son almacenados en una lista y realiza la suma de cada uno de sus elementos (Ejecución  */
+    /* secuencial y con hilos).                                                                      */
+    /*-----------------------------------------------------------------------------------------------*/
+
     static Random rd = new Random();
     static readonly String address = "NumerosGenerados.txt";
 
