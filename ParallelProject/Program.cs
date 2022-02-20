@@ -1,7 +1,9 @@
 ﻿using ParallelProject.Main;
 using System.Diagnostics;
+using System.Management;
 
-public class Program {
+public class Program
+{
 
     /*-----------------------------------------------------------------------------------------------*/
     /*          Guillermo Adrián Alonso Arámbula - Matrícula: 1812367 - Carrera: ITS                 */
@@ -16,6 +18,9 @@ public class Program {
     static Random rd = new Random();
     static readonly String address = "NumerosGenerados.txt";
 
+    static UInt32 numCores;
+    static UInt32 numThreads;
+
     // Variables de ejecución secuencial.
 
     static int resultadoSecuencial = 0;
@@ -25,7 +30,10 @@ public class Program {
     // MÉTODO PRINCIPAL
     public static void Main(string[] args)
     {
-        int numHilos = rd.Next(6, 12);
+        numCores = (UInt32) GetComponent("Win32_Processor", "NumberOfCores");
+        numThreads = (UInt32) GetComponent("Win32_Processor", "NumberOfLogicalProcessors");
+        int numHilos = rd.Next((int) numCores, (int) numThreads);
+
         NumberGenerator(rd.Next(1500, 3000) * numHilos); // GENERADOR DE NÚMEROS A ARCHIVO TXT.
 
         Thread[] thread = new Thread[numHilos];             // ARREGLOS DE CAPTURA DE TIEMPOS, INSTANCIA Y RESULTADOS PARA EJECUCIÓN DE HILOS.
@@ -37,9 +45,11 @@ public class Program {
         Console.WriteLine("-----------------------------------------------------------------------------------------------");
 
         Stopwatch sw = Stopwatch.StartNew(); // CONTEO DE EJECUCIÓN SECUENCIAL
-        for (int i = 0; i < intList.Count; i++) { 
+        for (int i = 0; i < intList.Count; i++)
+        {
             resultadoSecuencial = resultadoSecuencial + intList[i];
-            if (i == intList.Count - 1) {
+            if (i == intList.Count - 1)
+            {
                 Console.WriteLine("\n -- El resultado secuencial total es igual a: " + resultadoSecuencial);
             }
         }
@@ -48,32 +58,28 @@ public class Program {
         Console.WriteLine(" -- El tiempo de ejecución secuencial es igual a: " + tiempoSecuencial + " nanosegundos.\n");
         Console.WriteLine("-----------------------------------------------------------------------------------------------");
 
-        Parallel.For(0, numHilos, i => // BUCLE PARALELO QUE INICIA LOS HILOS DE EJECUCIÓN
-        {      
-            thread[i] = new Thread((ThreadStart) =>
+        Parallel.For(0, numHilos, i =>
+        {
+            int limInf = (intList.Count / numHilos) * i;
+            int limSup = (intList.Count / numHilos) * (i + 1);
+
+            sLog[i] = new SumLogic(i, 0, limInf, limSup);
+            stArray[i] = Stopwatch.StartNew(); // EJECUCIÓN DE TIEMPO DE OBTENCIÓN DE SUMA CON HILOS
+
+            for (int n = limInf; n < limSup; n++)
             {
-                
-                int limInf = (intList.Count / numHilos) * i;
-                int limSup = (intList.Count / numHilos) * (i + 1);
+                sLog[i].result += intList[n];
+            }
+            stArray[i].Stop();
+            stCounter[i] = stArray[i].ElapsedTicks * 100;
 
-                sLog[i] = new SumLogic(i,0,limInf,limSup);
-                
-                stArray[i] = Stopwatch.StartNew(); // EJECUCIÓN DE TIEMPO DE OBTENCIÓN DE SUMA CON HILOS
-                for (int n = sLog[i].limInf; n < sLog[i].limSup; n++)
-                {
-                    sLog[i].result += intList[n];
-                }
-                stArray[i].Stop();
-                stCounter[i] = stArray[i].ElapsedTicks * 100;
-
-                resultadoHilos += sLog[i].result;
-            });
-            thread[i].Start();      
+            resultadoHilos += sLog[i].result;
         });
 
         // IMPRESIÓN DE DATOS EN CONSOLA
 
-        for (int i = 0; i < numHilos; i++) {
+        for (int i = 0; i < numHilos; i++)
+        {
             Console.WriteLine("-----------------------------------------------------------------------------------------------");
             Console.WriteLine(" -- Hilo de ejecución [" + (i + 1) + "] tuvo un resultado de: " + sLog[i].result + ".");
             Console.WriteLine(" -- Tiempo de ejecución de hilo [" + (i + 1) + "] con: " + stCounter[i] + " nanosegundos.\n");
@@ -86,10 +92,11 @@ public class Program {
         Console.WriteLine(" -- Resultado ejecución hilos: " + resultadoHilos);
     }
 
-    public static void NumberGenerator(int limEnteros) { // FUNCIÓN QUE GENERA NUMEROS ALEATORIOS Y QUE LOS GUARDA EN UN ARCHIVO DE TEXTO.
+    public static void NumberGenerator(int limEnteros)
+    { // FUNCIÓN QUE GENERA NUMEROS ALEATORIOS Y QUE LOS GUARDA EN UN ARCHIVO DE TEXTO.
 
         List<int> intSample = new List<int>();
-        StreamWriter sw = new StreamWriter(address);
+        StreamWriter sw = new StreamWriter(address, false);
 
         for (int i = 0; i < limEnteros; i++)
         {
@@ -100,24 +107,47 @@ public class Program {
 
     }
 
-    public static List<int> NumberSource() { // FUNCIÓN QUE OBTIENE LOS NUMEROS DEL ARCHIVO DE TEXTO Y QUE LOS COLLECIONA EN UNA LISTA DE ENTEROS.
+    public static List<int> NumberSource()
+    { // FUNCIÓN QUE OBTIENE LOS NUMEROS DEL ARCHIVO DE TEXTO Y QUE LOS COLLECIONA EN UNA LISTA DE ENTEROS.
         List<int> intSample = new List<int>();
 
         try
         {
             StreamReader sr = new StreamReader(address);
 
-            while (!sr.EndOfStream) {
+            while (!sr.EndOfStream)
+            {
                 String lineSample = sr.ReadLine();
-                intSample.Add(Int32.Parse(lineSample));            
+                intSample.Add(Int32.Parse(lineSample));
             }
             sr.Close();
         }
-        catch (Exception e) {
+        catch (Exception e)
+        {
             Console.WriteLine("No se pudo obtener la lista de enteros solicitada.\nExcepción: " + e.StackTrace);
         }
 
         return intSample;
+    }
+
+    private static Object GetComponent(String hclass, String syntax)
+    {
+        try
+        {
+            ManagementObjectSearcher mos = new ManagementObjectSearcher("root\\cimv2", "SELECT * FROM " + hclass);
+            Object managementUnit = null;
+
+            foreach (ManagementObject mo in mos.Get())
+            {
+                managementUnit = mo.GetPropertyValue(syntax);
+            }
+            return managementUnit;
+        }
+        catch (ManagementException ex)
+        {
+            Console.WriteLine(ex.StackTrace);
+            return null;
+        }
     }
 }
 
