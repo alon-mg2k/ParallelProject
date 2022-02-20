@@ -1,6 +1,11 @@
 ﻿using ParallelProject.Main;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Management;
+using System.Threading;
+using System.Threading.Tasks;
 
 public class Program
 {
